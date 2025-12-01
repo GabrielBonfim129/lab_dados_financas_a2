@@ -168,15 +168,15 @@ server <- function(input, output, session) {
       showNotification("Responda todas as perguntas para calcular o perfil.", type = "error")
       return(NULL)
     }
-    update_navs(session, "main_nav", selected = "Setores")
+    updateNavbarPage(session, "main_nav", selected = "Setores")
   })
 
   observeEvent(input$go_to_sectors, {
-    update_navs(session, "main_nav", selected = "Setores")
+    updateNavbarPage(session, "main_nav", selected = "Setores")
   })
 
   observeEvent(input$go_to_portfolio, {
-    update_navs(session, "main_nav", selected = "Portfólio")
+    updateNavbarPage(session, "main_nav", selected = "Portfólio")
   })
 
   output$profile_text <- renderText({
