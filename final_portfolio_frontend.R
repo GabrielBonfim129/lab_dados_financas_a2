@@ -164,6 +164,10 @@ server <- function(input, output, session) {
   profile <- reactive({ profile_label(profile_score()) })
 
   observeEvent(input$submit_profile, {
+    if (is.na(profile_score())) {
+      showNotification("Responda todas as perguntas para calcular o perfil.", type = "error")
+      return(NULL)
+    }
     update_navs(session, "main_nav", selected = "Setores")
   })
 
@@ -192,7 +196,16 @@ server <- function(input, output, session) {
   })
 
   ranking_data <- eventReactive(input$run_ranking, {
-    req(profile(), input$sectors)
+    if (is.na(profile_score())) {
+      showNotification("Responda ao questionário para calcular o perfil antes de gerar o ranking.", type = "error")
+      return(list(ranking = tibble(), prices = tibble()))
+    }
+
+    if (is.null(input$sectors) || length(input$sectors) == 0) {
+      showNotification("Selecione ao menos um setor para formar o pool de ativos.", type = "error")
+      return(list(ranking = tibble(), prices = tibble()))
+    }
+
     pool <- select_tickers_by_sector(input$sectors)
     rank_assets_by_profile(pool, years = input$years, profile = profile())
   })
