@@ -104,7 +104,7 @@ ui <- page_fillable(
       card_body(
         div(class = "profile-box",
             h4("Perfil sugerido"),
-            textOutput("profile_text", container = div, class = "profile-label"),
+            div(class = "profile-label", textOutput("profile_text", container = span)),
             p("Pontuação agregada a partir das respostas selecionadas.")
         ),
         uiOutput("score_details"),
