@@ -80,16 +80,20 @@ ui <- page_navbar(
   fillable = TRUE,
   nav_panel(
     "Perfil do Investidor",
+    tags$head(
+      tags$style(HTML(".question-block strong{display:block;font-size:16px;white-space:normal;}\n",
+                      ".question-block .form-check-label{white-space:normal;width:100%;}"))
+    ),
     layout_columns(
-      col_widths = c(8, 4),
+      col_widths = c(9, 3),
       card(
         card_header("Questionário"),
         card_body(
           lapply(questions, function(q) {
             div(
-              class = "mb-3",
+              class = "mb-3 question-block",
               tags$strong(q$title),
-              radioButtons(q$id, label = NULL, choices = q$options, selected = character(0))
+              radioButtons(q$id, label = NULL, choices = q$options, selected = character(0), width = "100%")
             )
           })
         ),
@@ -115,11 +119,13 @@ ui <- page_navbar(
     layout_sidebar(
       sidebar = sidebar(
         title = "Seleção de setores",
+        width = 380,
         checkboxGroupInput(
           "sectors",
           "Escolha os setores que comporão o pool de ativos:",
           choices = names(sector_tickers),
-          selected = c("Energia", "Financeiro")
+          selected = names(sector_tickers)[1:2],
+          width = "100%"
         ),
         sliderInput("years", "Período (anos)", min = 1, max = 5, value = 3, step = 1),
         actionButton("go_to_portfolio", "Avançar para portfólio", class = "btn-primary w-100")

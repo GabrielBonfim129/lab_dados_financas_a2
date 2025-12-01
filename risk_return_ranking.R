@@ -11,16 +11,18 @@ library(yfR)
 
 `%||%` <- function(x, y) if (!is.null(x)) x else y
 
-# universo simplificado de setores e tickers (B3) usado pela aplicação
+# universo de setores (nomes completos B3) e tickers ampliados usado pela aplicação
 sector_tickers <- list(
-  `Energia` = c("ELET3", "ELET6", "EQTL3", "TAEE11", "NEOE3", "ENBR3", "ENGI11"),
-  `Financeiro` = c("ITUB4", "BBDC4", "BBAS3", "SANB11", "ITSA4"),
-  `Consumo` = c("VVAR3", "MGLU3", "LREN3", "AMER3", "BTOW3"),
-  `Materiais` = c("VALE3", "GGBR4", "CSNA3", "USIM5", "BRKM5"),
-  `Saude` = c("HAPV3", "GNDI3", "RDOR3", "PARD3", "FHER3"),
-  `Tecnologia` = c("TOTS3", "WEGE3", "POSI3", "LINX3", "LWSA3"),
-  `Saneamento` = c("SBSP3", "CSMG3", "SAPR11", "SAPR4", "SAPR3"),
-  `Transportes` = c("RAIL3", "CCRO3", "STBP3", "LOGN3", "AZUL4")
+  `Energia Elétrica` = c("ELET3", "ELET6", "EQTL3", "TAEE11", "NEOE3", "ENBR3", "ENGI11", "CPLE6", "CMIG4", "TRPL4", "COCE5"),
+  `Financeiro e Outros` = c("ITUB4", "BBDC4", "BBAS3", "SANB11", "ITSA4", "BPAC11", "BRSR6", "BRBI11"),
+  `Consumo Cíclico` = c("MGLU3", "LREN3", "AMER3", "CVCB3", "LAME4", "GUAR3", "ARZZ3"),
+  `Consumo não Cíclico` = c("CRFB3", "PCAR3", "ASAI3", "MDIA3", "BRFS3", "JBSS3", "MRFG3"),
+  `Materiais Básicos` = c("VALE3", "GGBR4", "CSNA3", "USIM5", "BRKM5", "SUZB3", "KLBN11", "GOAU4"),
+  `Petróleo, Gás e Biocombustíveis` = c("PETR4", "PETR3", "PRIO3", "RAIZ4", "RECV3", "UGPA3"),
+  `Saúde` = c("HAPV3", "RDOR3", "PARD3", "FLRY3", "DASA3", "QUAL3"),
+  `Tecnologia da Informação` = c("TOTS3", "LWSA3", "POSI3", "WEGE3", "BMOB3", "NGRD3"),
+  `Telecomunicações` = c("VIVT3", "TIMS3", "OIBR3", "OIBR4", "BRIT3"),
+  `Utilidades Públicas` = c("SBSP3", "CSMG3", "SAPR11", "SAPR4", "SAPR3", "EGIE3", "CMIG3")
 )
 
 # Seleciona tickers a partir de setores escolhidos
