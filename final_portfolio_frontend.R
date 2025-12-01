@@ -80,25 +80,32 @@ ui <- page_navbar(
   fillable = TRUE,
   nav_panel(
     "Perfil do Investidor",
-    layout_sidebar(
-      sidebar = sidebar(
-        title = "Questionário",
-        lapply(questions, function(q) {
-          div(
-            class = "mb-3",
-            tags$strong(q$title),
-            radioButtons(q$id, label = NULL, choices = q$options, selected = character(0))
-          )
-        }),
-        actionButton("submit_profile", "Calcular perfil", class = "btn-success w-100")
+    layout_columns(
+      col_widths = c(8, 4),
+      card(
+        card_header("Questionário"),
+        card_body(
+          lapply(questions, function(q) {
+            div(
+              class = "mb-3",
+              tags$strong(q$title),
+              radioButtons(q$id, label = NULL, choices = q$options, selected = character(0))
+            )
+          })
+        ),
+        card_footer(
+          actionButton("submit_profile", "Calcular perfil", class = "btn-success w-100")
+        )
       ),
       card(
-        class = "mt-3",
+        class = "h-100",
         card_header("Resultado"),
         card_body(
           h4(textOutput("profile_text")),
-          p("Após calcular, avance para selecionar os setores."),
-          actionButton("go_to_sectors", "Ir para seleção de setores", class = "btn-primary")
+          p("Após calcular, avance para selecionar os setores.")
+        ),
+        card_footer(
+          actionButton("go_to_sectors", "Ir para seleção de setores", class = "btn-primary w-100")
         )
       )
     )
@@ -132,22 +139,27 @@ ui <- page_navbar(
     "Portfólio",
     layout_sidebar(
       sidebar = sidebar(
-        title = "Ranking de ativos",
-        actionButton("run_ranking", "Gerar ranking", class = "btn-success w-100 mb-2"),
-        tableOutput("ranking_table"),
+        title = "Controles",
+        actionButton("run_ranking", "Gerar ranking", class = "btn-success w-100 mb-3"),
         checkboxGroupInput("custom_assets", "Selecione múltiplos ativos para compor o gráfico:", choices = NULL),
         selectInput("focus_asset", "Visualizar um ativo específico:", choices = c("Nenhum" = ""))
       ),
-      layout_columns(
-        col_widths = c(8, 4),
-        card(
-          card_header("Histórico de preços normalizado"),
-          plotOutput("price_chart", height = 400)
+      layout_rows(
+        layout_columns(
+          col_widths = c(8, 4),
+          card(
+            card_header("Histórico de preços normalizado"),
+            plotOutput("price_chart", height = 300)
+          ),
+          card(
+            card_header("Métricas"),
+            uiOutput("metrics_panel"),
+            uiOutput("portfolio_note")
+          )
         ),
         card(
-          card_header("Métricas"),
-          uiOutput("metrics_panel"),
-          uiOutput("portfolio_note")
+          card_header("Ranking completo"),
+          card_body(tableOutput("ranking_table"))
         )
       )
     )
@@ -163,11 +175,25 @@ server <- function(input, output, session) {
 
   profile <- reactive({ profile_label(profile_score()) })
 
+  horizon_years <- reactive({
+    case_when(
+      input$horizon == 1 ~ 1,
+      input$horizon == 2 ~ 3,
+      input$horizon == 3 ~ 5,
+      TRUE ~ 3
+    )
+  })
+
+  selected_years <- reactive({
+    input$years %||% horizon_years()
+  })
+
   observeEvent(input$submit_profile, {
     if (is.na(profile_score())) {
       showNotification("Responda todas as perguntas para calcular o perfil.", type = "error")
       return(NULL)
     }
+    updateSliderInput(session, "years", value = horizon_years())
     updateNavbarPage(session, "main_nav", selected = "Setores")
   })
 
@@ -207,7 +233,7 @@ server <- function(input, output, session) {
     }
 
     pool <- select_tickers_by_sector(input$sectors)
-    rank_assets_by_profile(pool, years = input$years, profile = profile())
+    rank_assets_by_profile(pool, years = selected_years(), profile = profile())
   })
 
   output$ranking_table <- renderTable({

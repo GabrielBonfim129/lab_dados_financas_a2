@@ -81,7 +81,10 @@ profile_weights <- function(profile) {
 }
 
 # Rankeia ativos a partir do perfil e devolve top 5
-rank_assets_by_profile <- function(tickers, years = 3, profile = "Moderado") {
+rank_assets_by_profile <- function(tickers, years, profile) {
+  years <- years %||% 3
+  profile <- profile %||% "Moderado"
+
   last_date <- Sys.Date()
   first_date <- last_date - years * 365
 
