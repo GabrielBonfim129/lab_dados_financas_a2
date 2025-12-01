@@ -144,17 +144,22 @@ ui <- page_navbar(
         checkboxGroupInput("custom_assets", "Selecione múltiplos ativos para compor o gráfico:", choices = NULL),
         selectInput("focus_asset", "Visualizar um ativo específico:", choices = c("Nenhum" = ""))
       ),
-      layout_rows(
-        layout_columns(
-          col_widths = c(8, 4),
-          card(
-            card_header("Histórico de preços normalizado"),
-            plotOutput("price_chart", height = 300)
+      tagList(
+        fluidRow(
+          column(
+            width = 8,
+            card(
+              card_header("Histórico de preços normalizado"),
+              plotOutput("price_chart", height = 300)
+            )
           ),
-          card(
-            card_header("Métricas"),
-            uiOutput("metrics_panel"),
-            uiOutput("portfolio_note")
+          column(
+            width = 4,
+            card(
+              card_header("Métricas"),
+              uiOutput("metrics_panel"),
+              uiOutput("portfolio_note")
+            )
           )
         ),
         card(
