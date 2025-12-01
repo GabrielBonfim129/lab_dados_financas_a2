@@ -1,13 +1,20 @@
 # lab_dados_financas_a2
-Final Project. Data lab applied to finances - Gabriel Bonfim
-This project creates a program that recommends assets for the user to buy based on a questionnaire filled out in a interface.
 
-New test line
+Projeto final do Lab de Dados Aplicado a Finanças (Gabriel Bonfim). A solução hoje é composta por scripts R que calculam o perfil do investidor, constroem um ranking risco-retorno via clusterização k-means e exibem tudo em uma interface Shiny unificada.
 
-## Questionário de perfil do investidor
+## Visão geral dos scripts
+- **risk_return_ranking.R**: funções utilitárias para montar o pool de ativos por setor, baixar preços via `yfR`, calcular métricas anualizadas de retorno/volatilidade/Sharpe e rankear os ativos com pesos dependentes do perfil (conservador, moderado ou arrojado). Também gera séries normalizadas e métricas agregadas de portfólio para a visualização final.
+- **final_portfolio_frontend.R**: aplicativo Shiny completo com três etapas: (1) questionário de perfil, (2) seleção de setores e horizonte, (3) ranking de ativos com tabela, destaques do Top 5, checkboxes para montar portfólios customizados e gráficos/métricas interativos. Utiliza `updateNavbarPage` para navegar entre as abas e valida entradas antes de rodar o ranking.
+- **investor_profile_frontend.R**: versão isolada do questionário de perfil. Pode ser usada separadamente caso queira apenas calcular e reaproveitar o resultado em outros fluxos.
+- **assets_selection.Rmd**: rascunho/relatório inicial de seleção de ativos (mantido para histórico, não integrado ao frontend principal).
 
-O script `investor_profile_frontend.R` adiciona uma aba simples em Shiny para avaliar o perfil do investidor (conservador, moderado ou arrojado) seguindo perguntas inspiradas em questionários de suitability brasileiros. Para executar:
+## Requisitos
+- R com os pacotes `shiny`, `bslib`, `dplyr`, `ggplot2`, `tidyr`, `scales`, `lubridate`, `purrr` e `yfR` instalados.
+- Acesso à internet para baixar cotações com `yfR` ao executar o ranking.
 
-1. Certifique-se de ter `shiny` e `bslib` instalados.
-2. Rode `Rscript -e "shiny::runApp('investor_profile_frontend.R')"`.
-3. Após responder e clicar em **Calcular perfil**, o resultado fica disponível na variável global `investor_profile_result`, que pode ser reutilizada por outros scripts (ex.: avaliação de ativos).
+## Como executar
+1. Instale os pacotes necessários (ex.: `install.packages(c('shiny','bslib','dplyr','ggplot2','tidyr','scales','lubridate','purrr','yfR'))`).
+2. Rode o frontend unificado: `Rscript -e "shiny::runApp('final_portfolio_frontend.R')"`.
+3. Alternativamente, para testar apenas o questionário isolado: `Rscript -e "shiny::runApp('investor_profile_frontend.R')"`.
+
+> Observação: os comandos acima não foram executados neste ambiente porque os pacotes R podem não estar disponíveis por padrão.
