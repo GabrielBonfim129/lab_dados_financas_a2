@@ -1,17 +1,25 @@
 # lab_dados_financas_a2
 
-Projeto final do Lab de Dados Aplicado a Finanças (Gabriel Bonfim). A solução hoje é composta por scripts R que calculam o perfil do investidor, constroem um ranking risco-retorno via clusterização k-means e exibem tudo em uma interface Shiny unificada.
+Aplicação Shiny do projeto final do Lab de Dados Aplicado a Finanças (Gabriel Bonfim). Ela calcula o perfil do investidor, gera um ranking risco-retorno via clusterização k-means e exibe os resultados em uma interface única.
 
-## Visão geral dos scripts
-- **risk_return_ranking.R**: funções utilitárias para montar o pool de ativos por setor, baixar preços via `yfR`, calcular métricas anualizadas de retorno/volatilidade/Sharpe e rankear os ativos com pesos dependentes do perfil (conservador, moderado ou arrojado). Também gera séries normalizadas e métricas agregadas de portfólio para a visualização final.
-- **final_portfolio_frontend.R**: aplicativo Shiny completo com três etapas: (1) questionário de perfil, (2) seleção de setores e horizonte, (3) ranking de ativos com tabela, destaques do Top 5, checkboxes para montar portfólios customizados e gráficos/métricas interativos. Utiliza `updateNavbarPage` para navegar entre as abas e valida entradas antes de rodar o ranking.
+## Novidades mais recentes
+- Interface reorganizada em três etapas (perfil, setores e portfólio) para guiar o usuário pelo fluxo completo.
+- Controles revisados para seleção de setores, horizonte de análise (anos) e filtros de ativos focados/customizados.
+- Métricas e gráficos consolidados na aba de portfólio, incluindo ranking completo e histórico de preços normalizado.
 
-## Requisitos
-- R com os pacotes `shiny`, `bslib`, `dplyr`, `ggplot2`, `tidyr`, `scales`, `lubridate`, `purrr` e `yfR` instalados.
-- Acesso à internet para baixar cotações com `yfR` ao executar o ranking.
+## Estrutura do projeto
+- **global.R**: carrega pacotes, perguntas do questionário, universo de setores e funções de cálculo.
+- **ui.R**: define a navegação entre abas, layout dos cards e inputs utilizados no app.
+- **server.R**: implementa a lógica reativa do questionário, seleção de setores, ranking e visualizações.
+- **rsconnect/**: metadados de publicação no shinyapps.io.
 
-## Como executar
-1. Instale os pacotes necessários (ex.: `install.packages(c('shiny','bslib','dplyr','ggplot2','tidyr','scales','lubridate','purrr','yfR'))`).
-2. Rode o frontend unificado: `Rscript -e "shiny::runApp('final_portfolio_frontend.R')"`.
-3. Alternativamente, para testar apenas o questionário isolado: `Rscript -e "shiny::runApp('investor_profile_frontend.R')"`.
+## Demonstração online
+A interface publicada está disponível em: https://cd5oc7-gabriel-bonfim.shinyapps.io/lab_dados_a2/
 
+## Como executar localmente
+1. Instale os pacotes necessários: `install.packages(c('shiny','bslib','dplyr','ggplot2','tidyr','scales','lubridate','purrr','yfR'))`.
+2. Execute a aplicação a partir do diretório do projeto:
+   ```
+   Rscript -e "shiny::runApp('.')"
+   ```
+3. Abra o navegador no endereço informado pelo console do R para interagir com as abas de Perfil do Investidor, Setores e Portfólio.
