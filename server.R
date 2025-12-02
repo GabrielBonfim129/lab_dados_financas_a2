@@ -1,159 +1,153 @@
-# Funções utilitárias para seleção de pool de ativos e rankeamento risco-retorno
-# O código usa uma clusterização k-means em métricas de risco e retorno
-# para apoiar a recomendação de acordo com o perfil do investidor.
+# Lógica do servidor para o aplicativo Shiny. As funções auxiliares estão em global.R
 
-library(dplyr)
-library(lubridate)
-library(purrr)
-library(tidyr)
-library(scales)
-library(yfR)
+server <- function(input, output, session) {
+  profile_score <- reactive({
+    vals <- vapply(questions, function(q) as.numeric(input[[q$id]] %||% NA_real_), numeric(1))
+    if (any(is.na(vals))) return(NA_real_)
+    sum(vals)
+  })
 
-`%||%` <- function(x, y) if (!is.null(x)) x else y
+  profile <- reactive({ profile_label(profile_score()) })
 
-# universo de setores (nomes completos B3) e tickers ampliados usado pela aplicação
-sector_tickers <- list(
-  `Energia Elétrica` = c("ELET3", "ELET6", "EQTL3", "TAEE11", "NEOE3", "ENBR3", "ENGI11", "CPLE6", "CMIG4", "TRPL4", "COCE5"),
-  `Financeiro e Outros` = c("ITUB4", "BBDC4", "BBAS3", "SANB11", "ITSA4", "BPAC11", "BRSR6", "BRBI11"),
-  `Consumo Cíclico` = c("MGLU3", "LREN3", "AMER3", "CVCB3", "LAME4", "GUAR3", "ARZZ3"),
-  `Consumo não Cíclico` = c("CRFB3", "PCAR3", "ASAI3", "MDIA3", "BRFS3", "JBSS3", "MRFG3"),
-  `Materiais Básicos` = c("VALE3", "GGBR4", "CSNA3", "USIM5", "BRKM5", "SUZB3", "KLBN11", "GOAU4"),
-  `Petróleo, Gás e Biocombustíveis` = c("PETR4", "PETR3", "PRIO3", "RAIZ4", "RECV3", "UGPA3"),
-  `Saúde` = c("HAPV3", "RDOR3", "PARD3", "FLRY3", "DASA3", "QUAL3"),
-  `Tecnologia da Informação` = c("TOTS3", "LWSA3", "POSI3", "WEGE3", "BMOB3", "NGRD3"),
-  `Telecomunicações` = c("VIVT3", "TIMS3", "OIBR3", "OIBR4", "BRIT3"),
-  `Utilidades Públicas` = c("SBSP3", "CSMG3", "SAPR11", "SAPR4", "SAPR3", "EGIE3", "CMIG3")
-)
-
-# Seleciona tickers a partir de setores escolhidos
-select_tickers_by_sector <- function(chosen_sectors) {
-  chosen <- sector_tickers[names(sector_tickers) %in% chosen_sectors]
-  unique(unlist(chosen, use.names = FALSE))
-}
-
-# Download seguro com tratamento mínimo para datas
-safe_yf_get <- function(tickers, first_date, last_date) {
-  if (length(tickers) == 0) return(tibble::tibble())
-  out <- tryCatch(
-    yf_get(
-      tickers = paste0(tickers, ".SA"),
-      first_date = as.Date(first_date),
-      last_date = as.Date(last_date),
-      do_cache = FALSE,
-      thresh_bad_data = 0.60
-    ),
-    error = function(e) {
-      message("Falha no download de preços: ", conditionMessage(e))
-      tibble::tibble()
-    }
-  )
-  if (!inherits(out$ref_date, "Date")) {
-    out$ref_date <- as.Date(out$ref_date)
-  }
-  out %>%
-    filter(!is.na(ref_date), !is.na(price_adjusted)) %>%
-    mutate(ticker = gsub("\\.SA$", "", ticker)) %>%
-    arrange(ticker, ref_date)
-}
-
-# Métricas de risco-retorno por ativo
-compute_asset_metrics <- function(prices_df) {
-  if (nrow(prices_df) == 0) return(tibble())
-
-  prices_df %>%
-    group_by(ticker) %>%
-    arrange(ref_date, .by_group = TRUE) %>%
-    mutate(daily_ret = price_adjusted / lag(price_adjusted) - 1) %>%
-    summarise(
-      n_obs = sum(!is.na(daily_ret)),
-      annual_return = (prod(1 + daily_ret, na.rm = TRUE)^(252 / n_obs) - 1) %>% coalesce(NA_real_),
-      annual_volatility = (sd(daily_ret, na.rm = TRUE) * sqrt(252)) %>% coalesce(NA_real_),
-      sharpe = ifelse(annual_volatility > 0, annual_return / annual_volatility, NA_real_),
-      .groups = "drop"
-    ) %>%
-    filter(is.finite(annual_return), is.finite(annual_volatility))
-}
-
-# Mapeia perfil em pesos de decisão
-profile_weights <- function(profile) {
-  switch(profile,
-         "Conservador" = list(return = 0.30, sharpe = 0.50, vol = -0.20, preferred_cluster = "Baixo risco"),
-         "Moderado"    = list(return = 0.40, sharpe = 0.40, vol = -0.20, preferred_cluster = "Risco intermediário"),
-         list(return = 0.55, sharpe = 0.30, vol = -0.15, preferred_cluster = "Alto risco"))
-}
-
-# Rankeia ativos a partir do perfil e devolve top 5
-rank_assets_by_profile <- function(tickers, years, profile) {
-  years <- years %||% 3
-  profile <- profile %||% "Moderado"
-
-  last_date <- Sys.Date()
-  first_date <- last_date - years * 365
-
-  prices <- safe_yf_get(tickers, first_date, last_date)
-  metrics <- compute_asset_metrics(prices)
-  if (nrow(metrics) == 0) {
-    return(list(ranking = tibble(), prices = tibble()))
-  }
-
-  # clusterização em risco-retorno
-  features <- metrics %>% select(annual_volatility, annual_return)
-  km <- kmeans(scale(features), centers = 3, nstart = 20)
-  metrics <- metrics %>% mutate(cluster = km$cluster)
-
-  # classifica clusters pelo risco (volatilidade média)
-  cluster_order <- metrics %>%
-    group_by(cluster) %>%
-    summarise(avg_vol = mean(annual_volatility), .groups = "drop") %>%
-    arrange(avg_vol) %>%
-    mutate(risk_label = c("Baixo risco", "Risco intermediário", "Alto risco"))
-
-  metrics <- metrics %>%
-    left_join(cluster_order, by = "cluster")
-
-  w <- profile_weights(profile)
-
-  metrics <- metrics %>%
-    mutate(
-      scaled_return = rescale(annual_return, to = c(0, 1)),
-      scaled_sharpe = rescale(sharpe %||% 0, to = c(0, 1)),
-      scaled_vol = rescale(annual_volatility, to = c(0, 1)),
-      cluster_bonus = case_when(
-        risk_label == w$preferred_cluster ~ 0.10,
-        TRUE ~ 0
-      ),
-      score = w$return * scaled_return + w$sharpe * scaled_sharpe + w$vol * (1 - scaled_vol) + cluster_bonus
-    ) %>%
-    arrange(desc(score)) %>%
-    mutate(rank = row_number(), top5 = rank <= 5)
-
-  list(ranking = metrics, prices = prices)
-}
-
-# Resumo agregado para um portfólio selecionado (para o gráfico padrão)
-portfolio_metrics <- function(selected_tickers, prices_df) {
-  if (length(selected_tickers) == 0 || nrow(prices_df) == 0) return(tibble())
-  prices_df %>%
-    filter(ticker %in% selected_tickers) %>%
-    group_by(ref_date) %>%
-    summarise(portfolio_price = mean(price_adjusted, na.rm = TRUE), .groups = "drop") %>%
-    arrange(ref_date) %>%
-    mutate(daily_ret = portfolio_price / lag(portfolio_price) - 1) %>%
-    summarise(
-      annual_return = (prod(1 + daily_ret, na.rm = TRUE)^(252 / sum(!is.na(daily_ret))) - 1),
-      annual_volatility = sd(daily_ret, na.rm = TRUE) * sqrt(252),
-      sharpe = ifelse(annual_volatility > 0, annual_return / annual_volatility, NA_real_)
+  horizon_years <- reactive({
+    case_when(
+      input$horizon == 1 ~ 1,
+      input$horizon == 2 ~ 3,
+      input$horizon == 3 ~ 5,
+      TRUE ~ 3
     )
-}
+  })
 
-# histórico de preços normalizado para o gráfico
-normalised_history <- function(prices_df, tickers) {
-  if (length(tickers) == 0 || nrow(prices_df) == 0) return(tibble())
-  prices_df %>%
-    filter(ticker %in% tickers) %>%
-    group_by(ticker) %>%
-    arrange(ref_date, .by_group = TRUE) %>%
-    mutate(px_index = price_adjusted / first(price_adjusted) * 100) %>%
-    ungroup()
-}
+  selected_years <- reactive({
+    input$years %||% horizon_years()
+  })
 
+  observeEvent(input$submit_profile, {
+    if (is.na(profile_score())) {
+      showNotification("Responda todas as perguntas para calcular o perfil.", type = "error")
+      return(NULL)
+    }
+    updateSliderInput(session, "years", value = horizon_years())
+    updateNavbarPage(session, "main_nav", selected = "Setores")
+  })
+
+  observeEvent(input$go_to_sectors, {
+    updateNavbarPage(session, "main_nav", selected = "Setores")
+  })
+
+  observeEvent(input$go_to_portfolio, {
+    updateNavbarPage(session, "main_nav", selected = "Portfólio")
+  })
+
+  output$profile_text <- renderText({
+    req(input$submit_profile)
+    profile()
+  })
+
+  output$pool_list <- renderUI({
+    sectors <- input$sectors %||% character(0)
+    tickers <- select_tickers_by_sector(sectors)
+    lapply(tickers, function(tk) tags$li(class = "list-inline-item badge bg-light text-dark", tk))
+  })
+
+  output$sector_hint <- renderText({
+    sectors <- input$sectors %||% character(0)
+    paste0("Setores escolhidos: ", paste(sectors, collapse = ", "))
+  })
+
+  ranking_data <- eventReactive(input$run_ranking, {
+    if (is.na(profile_score())) {
+      showNotification("Responda ao questionário para calcular o perfil antes de gerar o ranking.", type = "error")
+      return(list(ranking = tibble(), prices = tibble()))
+    }
+
+    if (is.null(input$sectors) || length(input$sectors) == 0) {
+      showNotification("Selecione ao menos um setor para formar o pool de ativos.", type = "error")
+      return(list(ranking = tibble(), prices = tibble()))
+    }
+
+    pool <- select_tickers_by_sector(input$sectors)
+    rank_assets_by_profile(pool, years = selected_years(), profile = profile())
+  })
+
+  output$ranking_table <- renderTable({
+    data <- ranking_data()$ranking
+    req(nrow(data) > 0)
+    data %>%
+      transmute(
+        Posicao = rank,
+        Ticker = ticker,
+        `Retorno anualizado` = percent(annual_return, accuracy = 0.1),
+        `Volatilidade anualizada` = percent(annual_volatility, accuracy = 0.1),
+        `Índice de Sharpe` = round(sharpe, 2),
+        `Cluster de risco` = risk_label,
+        Destaque = if_else(top5, "⭐ Top 5", "")
+      )
+  })
+
+  observeEvent(ranking_data(), {
+    data <- ranking_data()$ranking
+    if (nrow(data) == 0) return(NULL)
+    updateCheckboxGroupInput(session, "custom_assets", choices = data$ticker, selected = data$ticker[data$top5])
+    updateSelectInput(session, "focus_asset", choices = c("Nenhum" = "", data$ticker))
+  })
+
+  active_selection <- reactive({
+    data <- ranking_data()$ranking
+    req(nrow(data) > 0)
+    if (!is.null(input$focus_asset) && nchar(input$focus_asset) > 0) {
+      return(input$focus_asset)
+    }
+    selected <- input$custom_assets %||% character(0)
+    if (length(selected) > 0) return(selected)
+    data$ticker[data$top5]
+  })
+
+  output$price_chart <- renderPlot({
+    hist <- normalised_history(ranking_data()$prices, active_selection())
+    req(nrow(hist) > 0)
+    ggplot(hist, aes(x = ref_date, y = px_index, colour = ticker)) +
+      geom_line(size = 1) +
+      labs(x = "Data", y = "Preço normalizado (100 = início)", colour = "Ticker") +
+      theme_minimal()
+  })
+
+  output$metrics_panel <- renderUI({
+    data <- ranking_data()$ranking
+    req(nrow(data) > 0)
+    focus <- active_selection()
+    metrics <- data %>% filter(ticker %in% focus)
+    if (length(focus) > 1) {
+      agg <- portfolio_metrics(focus, ranking_data()$prices)
+      return(tagList(
+        h5("Portfólio selecionado"),
+        p(paste("Ativos:", paste(focus, collapse = ", "))),
+        p(paste("Retorno anualizado:", percent(agg$annual_return))),
+        p(paste("Volatilidade anualizada:", percent(agg$annual_volatility))),
+        p(paste("Índice de Sharpe:", round(agg$sharpe, 2)))
+      ))
+    }
+
+    row <- metrics[1, ]
+    tagList(
+      h5(paste("Ativo", row$ticker)),
+      p(paste("Cluster de risco:", row$risk_label)),
+      p(paste("Retorno anualizado:", percent(row$annual_return))),
+      p(paste("Volatilidade anualizada:", percent(row$annual_volatility))),
+      p(paste("Índice de Sharpe:", round(row$sharpe, 2))),
+      p(paste("Score no ranking:", round(row$score, 3)))
+    )
+  })
+
+  output$portfolio_note <- renderUI({
+    if (!is.null(input$focus_asset) && nchar(input$focus_asset) > 0) return(NULL)
+    data <- ranking_data()$ranking
+    req(nrow(data) > 0)
+    top <- data$ticker[data$top5]
+    tagList(
+      hr(),
+      p("Visualização padrão usando o portfólio Top 5 enquanto nenhum ativo específico é selecionado."),
+      p(paste("Ativos:", paste(top, collapse = ", ")))
+    )
+  })
+}
