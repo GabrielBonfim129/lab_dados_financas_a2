@@ -5,8 +5,6 @@ Projeto final do Lab de Dados Aplicado a Finanças (Gabriel Bonfim). A solução
 ## Visão geral dos scripts
 - **risk_return_ranking.R**: funções utilitárias para montar o pool de ativos por setor, baixar preços via `yfR`, calcular métricas anualizadas de retorno/volatilidade/Sharpe e rankear os ativos com pesos dependentes do perfil (conservador, moderado ou arrojado). Também gera séries normalizadas e métricas agregadas de portfólio para a visualização final.
 - **final_portfolio_frontend.R**: aplicativo Shiny completo com três etapas: (1) questionário de perfil, (2) seleção de setores e horizonte, (3) ranking de ativos com tabela, destaques do Top 5, checkboxes para montar portfólios customizados e gráficos/métricas interativos. Utiliza `updateNavbarPage` para navegar entre as abas e valida entradas antes de rodar o ranking.
-- **investor_profile_frontend.R**: versão isolada do questionário de perfil. Pode ser usada separadamente caso queira apenas calcular e reaproveitar o resultado em outros fluxos.
-- **assets_selection.Rmd**: rascunho/relatório inicial de seleção de ativos (mantido para histórico, não integrado ao frontend principal) - Trabalho entregue na A1, utlizado como base para algumas funções e funcionalidade.
 
 ## Requisitos
 - R com os pacotes `shiny`, `bslib`, `dplyr`, `ggplot2`, `tidyr`, `scales`, `lubridate`, `purrr` e `yfR` instalados.
