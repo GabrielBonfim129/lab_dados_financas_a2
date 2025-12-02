@@ -8,7 +8,7 @@ library(ggplot2)
 library(tidyr)
 library(scales)
 
-source("risk_return_ranking.R")
+source("server.R")
 
 `%||%` <- function(x, y) if (!is.null(x)) x else y
 

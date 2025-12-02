@@ -1,0 +1,13 @@
+name: lab_dados_a2
+title:
+username: cd5oc7-gabriel-bonfim
+account: cd5oc7-gabriel-bonfim
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16216166
+bundleId: 11262848
+url: https://cd5oc7-gabriel-bonfim.shinyapps.io/lab_dados_a2/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: final_portfolio_frontend.R
